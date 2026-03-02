@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Restaurant {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  currency    String   @default("$")
+  tables      Table[]
+  categories  MenuCategory[]
+}
+
+model Table {
+  id            String   @id @default(uuid())
+  label         String   // e.g., "12", "Patio 1"
+  qr_token      String?  @unique
+  restaurant_id String
+  restaurant    Restaurant @relation(fields: [restaurant_id], references: [id])
+  orders        Order[]
+  sessions      TableSession[]
+  serviceRequests ServiceRequest[]
+  chatMessages    ChatMessage[]
+}
+
+model TableSession {
+  id         String    @id @default(uuid())
+  table_id   String
+  table      Table     @relation(fields: [table_id], references: [id])
+  status     String    @default("ACTIVE")  // ACTIVE, CLOSED
+  started_at DateTime  @default(now())
+  closed_at  DateTime?
+  orders     Order[]
+}
+
+model ServiceRequest {
+  id          String   @id @default(uuid())
+  table_id    String
+  table       Table    @relation(fields: [table_id], references: [id])
+  type        String   // "CALL", "BILL", "WATER", "CLEAN"
+  status      String   @default("PENDING") // PENDING, DONE
+  message     String?
+  created_at  DateTime @default(now())
+}
+
+model ChatMessage {
+  id          String   @id @default(uuid())
+  table_id    String
+  table       Table    @relation(fields: [table_id], references: [id])
+  sender      String   // "CUSTOMER" or "STAFF"
+  text        String
+  created_at  DateTime @default(now())
+}
+
+
+model MenuCategory {
+  id            String     @id @default(uuid())
+  name          String
+  sort_order    Int        @default(0)
+  restaurant_id String
+  restaurant    Restaurant @relation(fields: [restaurant_id], references: [id])
+  items         MenuItem[]
+}
+
+model MenuItem {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  is_available Boolean     @default(true)
+  category_id String
+  category    MenuCategory @relation(fields: [category_id], references: [id])
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  table_id    String
+  table       Table       @relation(fields: [table_id], references: [id])
+  session_id  String?
+  session     TableSession? @relation(fields: [session_id], references: [id])
+  status      String      @default("RECEIVED") // RECEIVED, PREPARING, READY, COMPLETED
+  total_price Float       @default(0.0)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  order_id  String
+  order     Order    @relation(fields: [order_id], references: [id])
+  item_id   String
+  item      MenuItem @relation(fields: [item_id], references: [id])
+  quantity  Int
+  price     Float    // Snapshot of price at order time
+  notes     String?
+}
