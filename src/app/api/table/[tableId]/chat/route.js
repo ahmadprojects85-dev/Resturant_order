@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // 🛡️ A07: Simple Memory-based Rate Limiter for Chat
 const chatAttempts = new Map();
 const CHAT_WINDOW = 60 * 1000; // 1 min

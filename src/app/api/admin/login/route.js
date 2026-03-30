@@ -1,3 +1,8 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
+import { signToken } from '@/lib/auth';
+
 // 🛡️ A07: Simple Memory-based Rate Limiter for Login
 const loginAttempts = new Map();
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 mins
