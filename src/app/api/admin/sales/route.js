@@ -1,7 +1,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/auth';
+
+// Helper to check auth
+async function checkAuth() {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+    if (!token) return false;
+    const payload = await verifyToken(token.value);
+    return !!payload;
+}
 
 export async function GET(request) {
+    if (!await checkAuth()) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     try {
         const { searchParams } = new URL(request.url);
         const dateParam = searchParams.get('date'); // Expected: YYYY-MM-DD
@@ -22,24 +36,35 @@ export async function GET(request) {
         const prevDayEnd = new Date(endOfDay);
         prevDayEnd.setDate(prevDayEnd.getDate() - 1);
 
-        // Fetch current and previous day orders in parallel
-        const [orders, prevOrders, historicalOrders] = await Promise.all([
+        // Fetch ALL data in a single parallel batch to minimize round-trips to remote DB
+        const [orders, prevOrders, historicalOrders, sessions] = await Promise.all([
             prisma.order.findMany({
-                where: { created_at: { gte: startOfDay, lte: endOfDay } },
+                where: {
+                    created_at: { gte: startOfDay, lte: endOfDay },
+                    status: { not: 'CANCELLED' }
+                },
                 include: { items: { include: { item: true } }, table: true },
                 orderBy: { created_at: 'desc' }
             }),
             prisma.order.findMany({
-                where: { created_at: { gte: prevDayStart, lte: prevDayEnd } }
+                where: {
+                    created_at: { gte: prevDayStart, lte: prevDayEnd },
+                    status: { not: 'CANCELLED' }
+                },
+                select: { total_price: true }
             }),
-            // Fetch last 7 days for peak hour prediction
             prisma.order.findMany({
                 where: {
                     created_at: {
                         gte: new Date(new Date().setDate(new Date().getDate() - 7))
-                    }
+                    },
+                    status: { not: 'CANCELLED' }
                 },
                 select: { created_at: true }
+            }),
+            prisma.tableSession.findMany({
+                where: { started_at: { gte: startOfDay, lte: endOfDay } },
+                select: { table_id: true, table: { select: { label: true } } }
             })
         ]);
 
@@ -71,6 +96,13 @@ export async function GET(request) {
         const categoriesBreakdown = {};
 
         const tableRevenue = {};
+        const sessionCounts = {};
+
+        sessions.forEach(s => {
+            const label = s.table?.label || 'Unknown';
+            sessionCounts[label] = (sessionCounts[label] || 0) + 1;
+        });
+
         orders.forEach(order => {
             const tableLabel = order.table?.label || 'Unknown';
             tableRevenue[tableLabel] = (tableRevenue[tableLabel] || 0) + order.total_price;
@@ -107,9 +139,15 @@ export async function GET(request) {
 
         const itemsArray = Object.values(itemsSold).sort((a, b) => b.revenue - a.revenue);
         const categoriesArray = Object.values(categoriesBreakdown).sort((a, b) => b.revenue - a.revenue);
-        const topTables = Object.entries(tableRevenue)
-            .map(([label, revenue]) => ({ label, revenue }))
-            .sort((a, b) => b.revenue - a.revenue)
+
+        // Final Top Tables - Ranked by Session Count, with revenue as fallback
+        const topTables = Object.keys({ ...tableRevenue, ...sessionCounts })
+            .map(label => ({
+                label,
+                sessionCount: sessionCounts[label] || 0,
+                revenue: tableRevenue[label] || 0
+            }))
+            .sort((a, b) => b.sessionCount - a.sessionCount || b.revenue - a.revenue)
             .slice(0, 5);
 
         return NextResponse.json({
@@ -131,6 +169,7 @@ export async function GET(request) {
                 id: o.id,
                 shortId: o.id.slice(0, 8).toUpperCase(),
                 table: o.table?.label || 'Unknown',
+                sessionId: o.session_id,
                 total: o.total_price,
                 status: o.status,
                 time: o.created_at,

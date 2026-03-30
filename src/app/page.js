@@ -55,7 +55,7 @@ export default function Home() {
           <h1 className="text-display" style={{ marginBottom: '0.5rem' }}>
             The Coffee House
           </h1>
-          <p className="text-secondary" style={{ fontSize: '1.125rem' }}>
+          <p className="text-secondary" style={{ fontSize: 'var(--text-h3)', fontFamily: 'var(--font-display)', opacity: 0.8 }}>
             Artisan coffee & fresh pastries
           </p>
         </div>
@@ -90,10 +90,12 @@ export default function Home() {
               value={tableNumber}
               onChange={(e) => setTableNumber(e.target.value)}
               style={{
-                fontSize: '1.125rem',
+                fontSize: '1.25rem',
                 textAlign: 'center',
-                padding: '1rem',
-                background: 'white'
+                padding: '1.25rem',
+                background: 'white',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 700
               }}
             />
           </div>

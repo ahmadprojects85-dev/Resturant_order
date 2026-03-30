@@ -29,16 +29,11 @@ function FloatingServiceContent({ tableId }) {
     const [activeOrders, setActiveOrders] = useState([]);
 
     const chatEndRef = useRef(null);
-    const hasClearedRef = useRef(false);
     const lastMessageIdRef = useRef(null);
 
     // Clear chat messages on page load/refresh so new customers don't see old chats
-    useEffect(() => {
-        if (!hasClearedRef.current) {
-            hasClearedRef.current = true;
-            fetch(`/api/table/${tableId}/chat`, { method: 'DELETE' }).catch(() => { });
-        }
-    }, [tableId]);
+    // No longer auto-deleting chat on mount — messages should persist during the session
+    // Chat is cleared when the table session is closed from the kitchen instead
 
     // Poll for messages in the background even if the modal is closed
     useEffect(() => {

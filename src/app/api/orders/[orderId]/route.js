@@ -38,3 +38,42 @@ export async function GET(request, { params }) {
         return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 });
     }
 }
+
+export async function PATCH(request, { params }) {
+    try {
+        const { orderId } = await params;
+        const body = await request.json();
+
+        let order;
+        if (orderId.length < 36) {
+            order = await prisma.order.findFirst({ where: { id: { startsWith: orderId.toLowerCase() } } });
+        } else {
+            order = await prisma.order.findUnique({ where: { id: orderId } });
+        }
+
+        if (!order) {
+            return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        }
+
+        if (body.action === 'CANCEL') {
+            const age = Date.now() - new Date(order.created_at).getTime();
+            if (age > 20000) { // 20 seconds max buffer to allow network lag
+                return NextResponse.json({ error: 'Too late to cancel' }, { status: 400 });
+            }
+            if (order.status !== 'RECEIVED') {
+                return NextResponse.json({ error: 'Order is already being processed' }, { status: 400 });
+            }
+
+            const updated = await prisma.order.update({
+                where: { id: order.id },
+                data: { status: 'CANCELLED' }
+            });
+            return NextResponse.json(updated);
+        }
+
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    } catch (error) {
+        console.error('Order Patch API Error:', error);
+        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+    }
+}

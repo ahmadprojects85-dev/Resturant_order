@@ -11,6 +11,21 @@ export default function KitchenPage() {
     const isFirstLoadRef = useRef(true);
     const [billData, setBillData] = useState(null); // { table, orders, grandTotal }
     const [activeTables, setActiveTables] = useState([]);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            const res = await fetch('/api/admin/logout', { method: 'POST' });
+            if (res.ok) {
+                window.location.href = '/admin/login';
+            }
+        } catch (e) {
+            console.error('Logout failed:', e);
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     useEffect(() => {
         fetchOrders();
@@ -18,9 +33,13 @@ export default function KitchenPage() {
         const interval = setInterval(() => {
             fetchOrders();
             fetchActiveTables();
-        }, 2000);
+        }, 10000);
         return () => clearInterval(interval);
     }, []);
+
+    // We track which orders are actively being updated so 
+    // the 10-second polling doesn't overwrite them with outdated DB state
+    const updatingOrdersRef = useRef(new Set());
 
     async function fetchOrders() {
         try {
@@ -44,15 +63,34 @@ export default function KitchenPage() {
             const newIds = currentOrderIds.filter(id => !knownOrderIdsRef.current.has(id));
 
             if (newIds.length > 0 && !isFirstLoadRef.current) {
-                playNotificationSound();
-                setNewOrderIds(new Set(newIds));
-                setTimeout(() => setNewOrderIds(new Set()), 3000);
+                // If the only new orders are ones we literally just updated ourselves,
+                // don't play the notification sound (to prevent annoying duplicate dings)
+                const trulyNewIds = newIds.filter(id => !updatingOrdersRef.current.has(id));
+
+                if (trulyNewIds.length > 0) {
+                    playNotificationSound();
+                    setNewOrderIds(new Set(trulyNewIds));
+                    setTimeout(() => setNewOrderIds(new Set()), 3000);
+                }
             }
 
             // Sync known IDs
             currentOrderIds.forEach(id => knownOrderIdsRef.current.add(id));
             isFirstLoadRef.current = false;
-            setOrders(data);
+
+            // Only update orders from poll if they are NOT currently being updated by the kitchen staff
+            setOrders(prevOrders => {
+                const finalOrders = data.map(polledOrder => {
+                    const localOrder = prevOrders.find(o => o.id === polledOrder.id);
+                    // If we locally updated this order recently, keep our local status instead of the server's
+                    if (updatingOrdersRef.current.has(polledOrder.id) && localOrder) {
+                        return localOrder;
+                    }
+                    return polledOrder;
+                });
+                return finalOrders;
+            });
+
         } catch (error) {
             console.warn("Kitchen Order Polling Error:", error.message);
         } finally {
@@ -74,6 +112,10 @@ export default function KitchenPage() {
 
     async function updateStatus(orderId, newStatus) {
         try {
+            // Mark this order as 'currently updating' to protect it from the poller
+            updatingOrdersRef.current.add(orderId);
+
+            // Optimistic UI update
             setOrders(prev => prev.map(o =>
                 o.id === orderId ? { ...o, status: newStatus } : o
             ));
@@ -84,9 +126,38 @@ export default function KitchenPage() {
                 body: JSON.stringify({ status: newStatus })
             });
 
-            fetchOrders();
+            // Delay removing the protection slightly to ensure the next poll gets the fresh DB data
+            setTimeout(() => {
+                updatingOrdersRef.current.delete(orderId);
+                // Fetch the definitive state now that DB is updated
+                fetchOrders();
+            }, 1000);
+
         } catch (error) {
             console.error("Failed to update status", error);
+        }
+    }
+
+    async function cancelOrder(orderId) {
+        if (!confirm('Cancel this order? It will be removed from the kitchen display.')) return;
+        try {
+            updatingOrdersRef.current.add(orderId);
+            // Optimistic: remove from UI immediately
+            setOrders(prev => prev.filter(o => o.id !== orderId));
+
+            await fetch(`/api/kitchen/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'CANCELLED' })
+            });
+
+            setTimeout(() => {
+                updatingOrdersRef.current.delete(orderId);
+                fetchOrders();
+            }, 1000);
+        } catch (error) {
+            console.error('Failed to cancel order', error);
+            fetchOrders(); // Re-fetch to restore if failed
         }
     }
 
@@ -103,7 +174,7 @@ export default function KitchenPage() {
     }
 
     async function handleCloseTable(tableId, tableLabel) {
-        if (!confirm(`Close Table ${tableLabel}? This will end the current session and prepare for the next customer.`)) return;
+        if (!confirm(`Clear Table ${tableLabel} for the next customer? This will end the current session and remove it from the active list.`)) return;
         try {
             const res = await fetch(`/api/table/${tableId}/session`, { method: 'POST' });
             if (res.ok) {
@@ -159,22 +230,45 @@ export default function KitchenPage() {
                     <span>👨‍🍳</span>
                     <span>Kitchen Display</span>
                 </h1>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    background: 'rgba(255,255,255,0.1)',
-                    padding: '0.5rem 1rem',
-                    borderRadius: 'var(--radius-full)'
-                }}>
-                    <span style={{
-                        width: '10px',
-                        height: '10px',
-                        background: '#4CAF50',
-                        borderRadius: '50%',
-                        boxShadow: '0 0 10px #4CAF50'
-                    }} />
-                    <span style={{ fontSize: '0.875rem' }}>Live</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        background: 'rgba(255,255,255,0.1)',
+                        padding: '0.5rem 1rem',
+                        borderRadius: 'var(--radius-full)'
+                    }}>
+                        <span style={{
+                            width: '10px',
+                            height: '10px',
+                            background: '#4CAF50',
+                            borderRadius: '50%',
+                            boxShadow: '0 0 10px #4CAF50'
+                        }} />
+                        <span style={{ fontSize: '0.875rem' }}>Live</span>
+                    </div>
+
+                    <button
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '12px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        🚪 {isLoggingOut ? '...' : 'Logout'}
+                    </button>
                 </div>
             </header>
 
@@ -194,6 +288,7 @@ export default function KitchenPage() {
                             actionColor="#D97B3D"
                             isNew={newOrderIds.has(order.id)}
                             onPrintBill={handlePrintBill}
+                            onCancel={() => cancelOrder(order.id)}
                         />
                     ))}
                 </Column>
@@ -207,6 +302,7 @@ export default function KitchenPage() {
                             actionLabel="Mark Ready"
                             actionColor="#FF9800"
                             onPrintBill={handlePrintBill}
+                            onCancel={() => cancelOrder(order.id)}
                         />
                     ))}
                 </Column>
@@ -220,8 +316,7 @@ export default function KitchenPage() {
                             actionLabel="Complete ✓"
                             actionColor="#4CAF50"
                             onPrintBill={handlePrintBill}
-                            onCloseTable={handleCloseTable}
-                            showClose
+                            onCancel={() => cancelOrder(order.id)}
                         />
                     ))}
                 </Column>
@@ -265,7 +360,7 @@ export default function KitchenPage() {
                             }}>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 700, fontSize: '1rem' }}>
-                                        Table {t.tableLabel}
+                                        Table {t.tableLabel} ({t.sessionSequence})
                                     </div>
                                     <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>
                                         {t.orderCount} order{t.orderCount !== 1 ? 's' : ''} • ${t.grandTotal.toFixed(2)}
@@ -359,8 +454,26 @@ function Column({ title, count, children, color }) {
     );
 }
 
-function Ticket({ order, onAction, actionLabel, actionColor, isNew = false, onPrintBill, onCloseTable, showClose = false }) {
+function Ticket({ order, onAction, actionLabel, actionColor, isNew = false, onPrintBill, onCancel }) {
+    const [timeLeft, setTimeLeft] = useState(0);
+
+    useEffect(() => {
+        if (order.status === 'RECEIVED') {
+            const orderTime = new Date(order.created_at).getTime();
+            const calc = () => Math.max(0, 15 - Math.floor((Date.now() - orderTime) / 1000));
+
+            setTimeLeft(calc());
+            const timer = setInterval(() => {
+                const remaining = calc();
+                setTimeLeft(remaining);
+                if (remaining <= 0) clearInterval(timer);
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [order.created_at, order.status]);
+
     const elapsed = Math.floor((new Date() - new Date(order.created_at)) / 1000 / 60);
+    const isLocked = order.status === 'RECEIVED' && timeLeft > 0;
 
     return (
         <div
@@ -381,7 +494,7 @@ function Ticket({ order, onAction, actionLabel, actionColor, isNew = false, onPr
                 marginBottom: '0.75rem'
             }}>
                 <span style={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                    Table {order.table.label}
+                    Table {order.table.label} ({order.sessionSequence})
                 </span>
                 <span style={{ fontSize: '0.8125rem', color: '#7A4F2C' }}>
                     #{order.id.slice(0, 4)} • {elapsed}m ago
@@ -435,20 +548,21 @@ function Ticket({ order, onAction, actionLabel, actionColor, isNew = false, onPr
             <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                     onClick={onAction}
+                    disabled={isLocked}
                     style={{
                         flex: 1,
                         padding: '0.75rem',
-                        background: actionColor,
+                        background: isLocked ? '#9ca3af' : actionColor,
                         color: 'white',
                         border: 'none',
                         borderRadius: 'var(--radius-full)',
                         fontWeight: 600,
                         fontSize: '0.9375rem',
-                        cursor: 'pointer',
+                        cursor: isLocked ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    {actionLabel}
+                    {isLocked ? `Wait ${timeLeft}s` : actionLabel}
                 </button>
                 <button
                     onClick={() => onPrintBill(order.table.id)}
@@ -468,28 +582,26 @@ function Ticket({ order, onAction, actionLabel, actionColor, isNew = false, onPr
                 >
                     🖨️
                 </button>
-                {showClose && (
-                    <button
-                        onClick={() => onCloseTable(order.table.id, order.table.label)}
-                        title="Close Table"
-                        style={{
-                            width: '44px',
-                            height: '44px',
-                            background: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 'var(--radius-full)',
-                            fontSize: '1rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700
-                        }}
-                    >
-                        ✕
-                    </button>
-                )}
+                <button
+                    onClick={onCancel}
+                    title="Cancel Order"
+                    style={{
+                        width: '44px',
+                        height: '44px',
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700
+                    }}
+                >
+                    ✕
+                </button>
             </div>
         </div>
     );

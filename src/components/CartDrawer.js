@@ -4,17 +4,21 @@ import { useToast } from '@/context/ToastContext';
 import { useRouter, useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useState } from 'react';
+import { useNotifications } from '@/components/NotificationProvider';
 
 export default function CartDrawer() {
   const { cart, isCartOpen, setIsCartOpen, updateQuantity, cartTotal, clearCart } = useCart();
   const { showToast } = useToast();
+  const { subscribeForOrder, askForPermission, permission, isSupported } = useNotifications() || {};
   const router = useRouter();
   const params = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   if (!isCartOpen) return null;
 
-  const handleCheckout = async () => {
+  // The actual order placement logic (called after notification choice)
+  const placeOrderNow = async (notifGranted) => {
     try {
       setIsSubmitting(true);
       const tableId = params.tableId;
@@ -28,9 +32,19 @@ export default function CartDrawer() {
       const result = await api.placeOrder(tableId, cart);
 
       if (result.success) {
-        showToast("Order placed successfully! 🎉", "success");
+        if (notifGranted) {
+          showToast("Order placed! We'll notify you when it's ready 🔔", "success");
+        } else {
+          showToast("Order placed! Check back here for updates.", "success");
+        }
         clearCart();
         setIsCartOpen(false);
+
+        // Subscribe for push notifications using the full DB order ID
+        if (notifGranted && subscribeForOrder && result.dbOrderId) {
+          subscribeForOrder(result.dbOrderId);
+        }
+
         router.push(`/order/${result.orderId}`);
       }
     } catch (error) {
@@ -39,6 +53,34 @@ export default function CartDrawer() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCheckout = async () => {
+    // If notifications are already granted or not supported, skip the prompt
+    if (!isSupported || permission === 'granted' || permission === 'denied') {
+      if (askForPermission && permission !== 'denied') {
+        await askForPermission();
+      }
+      await placeOrderNow(permission === 'granted');
+      return;
+    }
+
+    // Show our friendly notification prompt
+    setShowNotifPrompt(true);
+  };
+
+  const handleEnableNotifications = async () => {
+    setShowNotifPrompt(false);
+    let granted = false;
+    if (askForPermission) {
+      granted = await askForPermission();
+    }
+    await placeOrderNow(granted);
+  };
+
+  const handleSkipNotifications = async () => {
+    setShowNotifPrompt(false);
+    await placeOrderNow(false);
   };
 
   return (
@@ -88,8 +130,8 @@ export default function CartDrawer() {
           borderBottom: '1px solid var(--border)'
         }}>
           <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--brown)' }}>Your Basket</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            <h2 className="text-heading" style={{ color: 'var(--brown)' }}>Your Basket</h2>
+            <p className="text-secondary" style={{ fontSize: 'var(--text-small)' }}>
               {cart.length} {cart.length === 1 ? 'item' : 'items'} ready to order
             </p>
           </div>
@@ -125,10 +167,10 @@ export default function CartDrawer() {
               padding: '4rem 1rem'
             }}>
               <div style={{ fontSize: '5rem', marginBottom: '1.5rem' }}>☕</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--brown)', marginBottom: '0.5rem' }}>
+              <h3 className="text-title" style={{ color: 'var(--brown)', marginBottom: '0.5rem' }}>
                 Your Basket is Empty
               </h3>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+              <p className="text-secondary" style={{ marginBottom: '2rem' }}>
                 Browse our menu and pick some delicious treats!
               </p>
               <button
@@ -172,10 +214,10 @@ export default function CartDrawer() {
 
                   {/* Item Info */}
                   <div style={{ flex: 1 }}>
-                    <h4 style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                    <h4 style={{ fontWeight: 600, fontSize: 'var(--text-body)', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                       {item.name}
                     </h4>
-                    <p style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '1rem' }}>
+                    <p className="price" style={{ fontSize: 'var(--text-body)' }}>
                       ${item.price.toFixed(2)}
                     </p>
                   </div>
@@ -224,12 +266,12 @@ export default function CartDrawer() {
             {/* Payment Summary */}
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Items Total</span>
-                <span style={{ fontWeight: 600 }}>${cartTotal.toFixed(2)}</span>
+                <span className="text-secondary" style={{ fontSize: 'var(--text-small)' }}>Items Total</span>
+                <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${cartTotal.toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--border)' }}>
-                <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--brown)' }}>Total to Pay</span>
-                <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--primary)' }}>${cartTotal.toFixed(2)}</span>
+                <span className="text-heading" style={{ color: 'var(--brown)' }}>Total to Pay</span>
+                <span className="price" style={{ fontSize: 'var(--text-h2)' }}>${cartTotal.toFixed(2)}</span>
               </div>
             </div>
 
@@ -279,6 +321,180 @@ export default function CartDrawer() {
           </div>
         )}
       </div>
+
+      {/* 🔔 Notification Permission Prompt Modal */}
+      {showNotifPrompt && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(61, 38, 16, 0.5)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(12px)',
+          padding: '1.5rem',
+          animation: 'notifFadeIn 0.3s ease'
+        }}>
+          <div style={{
+            background: 'var(--surface, #fff)',
+            padding: '2.5rem 2rem 2rem',
+            borderRadius: '28px',
+            maxWidth: '380px',
+            width: '100%',
+            boxShadow: '0 25px 60px rgba(61, 38, 16, 0.3)',
+            textAlign: 'center',
+            position: 'relative',
+            border: '1px solid rgba(217, 123, 61, 0.15)',
+            overflow: 'hidden',
+            animation: 'notifSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}>
+            {/* Warm glow behind icon */}
+            <div style={{
+              position: 'absolute',
+              top: '-30px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '160px',
+              height: '160px',
+              background: 'radial-gradient(circle, rgba(217, 123, 61, 0.25), transparent 70%)',
+              borderRadius: '50%',
+              zIndex: 0
+            }} />
+
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              {/* Bell Icon */}
+              <div style={{
+                fontSize: '4rem',
+                marginBottom: '1rem',
+                filter: 'drop-shadow(0 6px 12px rgba(217, 123, 61, 0.3))',
+                animation: 'notifBell 2s ease-in-out infinite'
+              }}>
+                🔔
+              </div>
+
+              {/* Title */}
+              <h3 style={{
+                fontSize: '1.35rem',
+                fontWeight: 800,
+                color: 'var(--brown, #3D2610)',
+                marginBottom: '0.5rem',
+                letterSpacing: '-0.02em'
+              }}>
+                Stay Updated!
+              </h3>
+
+              {/* Description */}
+              <p style={{
+                color: 'var(--text-secondary, #7A4F2C)',
+                fontSize: '0.95rem',
+                lineHeight: 1.5,
+                marginBottom: '1.75rem',
+                padding: '0 0.5rem'
+              }}>
+                Turn on notifications so we can <strong>ring your phone</strong> when your order is hot and ready to pick up!
+              </p>
+
+              {/* Info box */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: 'rgba(76, 175, 80, 0.08)',
+                padding: '0.85rem 1rem',
+                borderRadius: '14px',
+                marginBottom: '1.75rem',
+                border: '1px solid rgba(76, 175, 80, 0.2)',
+                textAlign: 'left'
+              }}>
+                <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>📱</span>
+                <span style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--text-secondary, #7A4F2C)',
+                  lineHeight: 1.4
+                }}>
+                  Without notifications, you'll need to <strong>keep checking back</strong> to know when your food is ready.
+                </span>
+              </div>
+
+              {/* Enable Button */}
+              <button
+                onClick={handleEnableNotifications}
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  background: 'linear-gradient(135deg, #D97B3D, #C2611F)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '16px',
+                  fontSize: '1.05rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 8px 20px rgba(217, 123, 61, 0.35)',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  marginBottom: '0.75rem'
+                }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <span>🔔</span>
+                <span>Enable Notifications</span>
+              </button>
+
+              {/* Skip Button */}
+              <button
+                onClick={handleSkipNotifications}
+                style={{
+                  width: '100%',
+                  padding: '0.85rem',
+                  background: 'var(--surface-muted, #f5f0eb)',
+                  color: 'var(--text-secondary, #7A4F2C)',
+                  border: '1px solid var(--border, #e0d5c8)',
+                  borderRadius: '14px',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease'
+                }}
+              >
+                Maybe Later
+              </button>
+
+              <p style={{
+                marginTop: '1rem',
+                fontSize: '0.7rem',
+                color: 'var(--text-muted, #b0a090)',
+                lineHeight: 1.4
+              }}>
+                You can always enable notifications later in your browser settings
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes notifFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes notifSlideUp {
+          from { opacity: 0; transform: translateY(30px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes notifBell {
+          0%, 100% { transform: rotate(0deg); }
+          10% { transform: rotate(14deg); }
+          20% { transform: rotate(-12deg); }
+          30% { transform: rotate(10deg); }
+          40% { transform: rotate(-6deg); }
+          50% { transform: rotate(0deg); }
+        }
+      `}</style>
     </>
   );
 }

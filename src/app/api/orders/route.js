@@ -1,10 +1,33 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// 🛡️ A07: Simple Memory-based Rate Limiter for Orders
+const orderAttempts = new Map();
+const ORDER_WINDOW = 10 * 60 * 1000; // 10 mins
+const MAX_ORDERS = 5;
+
 export async function POST(request) {
     try {
+        const ip = request.headers.get('x-forwarded-for') || 'unknown';
+        const now = Date.now();
+        
+        const record = orderAttempts.get(ip);
+        if (record && (now - record.startTime > ORDER_WINDOW)) {
+            orderAttempts.delete(ip);
+        }
+
+        const currentCount = orderAttempts.get(ip)?.count || 0;
+        if (currentCount >= MAX_ORDERS) {
+            return NextResponse.json({ 
+                error: 'Too many orders placed. Please wait a few minutes or call a waiter.' 
+            }, { status: 429 });
+        }
+
         const body = await request.json();
         const { tableId, items } = body;
+
+        // Log attempt
+        orderAttempts.set(ip, { count: currentCount + 1, startTime: record?.startTime || now });
 
         if (!tableId) {
             return NextResponse.json({ error: 'Missing table ID' }, { status: 400 });

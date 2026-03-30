@@ -88,10 +88,7 @@ export default function MenuManagement() {
                     gap: '1rem'
                 }}>
                     <div>
-                        <h1 style={{
-                            fontSize: '2rem',
-                            fontWeight: 700,
-                            color: 'var(--brown)',
+                        <h1 className="text-display" style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem'
@@ -99,7 +96,7 @@ export default function MenuManagement() {
                             <span>☕</span>
                             <span>Menu Management</span>
                         </h1>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                        <p className="text-secondary" style={{ marginTop: '0.25rem', fontSize: 'var(--text-body)' }}>
                             Customize your restaurant's offerings
                         </p>
                     </div>
@@ -113,232 +110,229 @@ export default function MenuManagement() {
                 </header>
 
                 {/* Content */}
-                {loading && !data ? (
-                    <div style={{
-                        textAlign: 'center',
-                        padding: '4rem',
-                        fontSize: '1.25rem',
-                        color: 'var(--text-secondary)'
-                    }}>
-                        Loading menu...
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        {data?.categories?.map((category) => (
-                            <div
-                                key={category.id}
-                                className="card"
-                                style={{ overflow: 'hidden' }}
-                            >
-                                {/* Category Header */}
-                                <div style={{
-                                    padding: '1.25rem 1.5rem',
-                                    background: 'var(--surface-muted)',
-                                    borderBottom: '1px solid var(--border)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center'
-                                }}>
-                                    <h2 style={{
-                                        fontSize: '1.25rem',
-                                        fontWeight: 600,
-                                        color: 'var(--brown)'
+                {
+                    loading && !data ? (
+                        <div style={{
+                            textAlign: 'center',
+                            padding: '4rem',
+                            fontSize: '1.25rem',
+                            color: 'var(--text-secondary)'
+                        }}>
+                            Loading menu...
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            {data?.categories?.map((category) => (
+                                <div
+                                    key={category.id}
+                                    className="card"
+                                    style={{ overflow: 'hidden' }}
+                                >
+                                    {/* Category Header */}
+                                    <div style={{
+                                        padding: '1.25rem 1.5rem',
+                                        background: 'var(--surface-muted)',
+                                        borderBottom: '1px solid var(--border)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
                                     }}>
-                                        {category.name}
-                                    </h2>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button
-                                            onClick={() => { setEditingCategory(category); setIsCatModalOpen(true); }}
-                                            className="btn-icon"
-                                            style={{ width: '36px', height: '36px' }}
-                                            title="Edit Category"
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteCategory(category.id)}
-                                            className="btn-icon"
-                                            style={{
-                                                width: '36px',
-                                                height: '36px',
-                                                background: 'var(--error-bg)',
-                                                color: 'var(--error)'
-                                            }}
-                                            title="Delete Category"
-                                        >
-                                            🗑️
-                                        </button>
+                                        <h2 className="text-heading" style={{ color: 'var(--brown)' }}>
+                                            {category.name}
+                                        </h2>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => { setEditingCategory(category); setIsCatModalOpen(true); }}
+                                                className="btn-icon"
+                                                style={{ width: '36px', height: '36px' }}
+                                                title="Edit Category"
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCategory(category.id)}
+                                                className="btn-icon"
+                                                style={{
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    background: 'var(--error-bg)',
+                                                    color: 'var(--error)'
+                                                }}
+                                                title="Delete Category"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Items Grid */}
-                                <div style={{ padding: '1.5rem' }}>
-                                    {category.items.length === 0 ? (
-                                        <p style={{
-                                            color: 'var(--text-muted)',
-                                            fontStyle: 'italic',
-                                            textAlign: 'center',
-                                            padding: '1rem'
-                                        }}>
-                                            No items in this category.
-                                        </p>
-                                    ) : (
-                                        <div style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                            gap: '1rem'
-                                        }}>
-                                            {category.items.map((item) => (
-                                                <div
-                                                    key={item.id}
-                                                    style={{
-                                                        background: 'var(--surface-muted)',
-                                                        padding: '1rem',
-                                                        borderRadius: 'var(--radius-lg)',
-                                                        display: 'flex',
-                                                        gap: '1rem',
-                                                        alignItems: 'center',
-                                                        opacity: item.is_available ? 1 : 0.6,
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                >
-                                                    {/* Image */}
-                                                    {item.image ? (
-                                                        <img
-                                                            src={item.image}
-                                                            alt={item.name}
-                                                            style={{
+                                    {/* Items Grid */}
+                                    <div style={{ padding: '1.5rem' }}>
+                                        {category.items.length === 0 ? (
+                                            <p style={{
+                                                color: 'var(--text-muted)',
+                                                fontStyle: 'italic',
+                                                textAlign: 'center',
+                                                padding: '1rem'
+                                            }}>
+                                                No items in this category.
+                                            </p>
+                                        ) : (
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                                gap: '1rem'
+                                            }}>
+                                                {category.items.map((item) => (
+                                                    <div
+                                                        key={item.id}
+                                                        style={{
+                                                            background: 'var(--surface-muted)',
+                                                            padding: '1rem',
+                                                            borderRadius: 'var(--radius-lg)',
+                                                            display: 'flex',
+                                                            gap: '1rem',
+                                                            alignItems: 'center',
+                                                            opacity: item.is_available ? 1 : 0.6,
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                    >
+                                                        {/* Image */}
+                                                        {item.image ? (
+                                                            <img
+                                                                src={item.image}
+                                                                alt={item.name}
+                                                                style={{
+                                                                    width: '64px',
+                                                                    height: '64px',
+                                                                    borderRadius: 'var(--radius-md)',
+                                                                    objectFit: 'cover',
+                                                                    filter: item.is_available ? 'none' : 'grayscale(1)'
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div style={{
                                                                 width: '64px',
                                                                 height: '64px',
                                                                 borderRadius: 'var(--radius-md)',
-                                                                objectFit: 'cover',
-                                                                filter: item.is_available ? 'none' : 'grayscale(1)'
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div style={{
-                                                            width: '64px',
-                                                            height: '64px',
-                                                            borderRadius: 'var(--radius-md)',
-                                                            background: 'var(--border)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            fontSize: '1.5rem'
-                                                        }}>
-                                                            ☕
-                                                        </div>
-                                                    )}
-
-                                                    {/* Info */}
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <h3 style={{
-                                                            fontSize: '1rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--text-primary)',
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis'
-                                                        }}>
-                                                            {item.name}
-                                                        </h3>
-                                                        <p className="price" style={{ marginTop: '0.25rem' }}>
-                                                            ${item.price.toFixed(2)}
-                                                        </p>
-                                                        {!item.is_available && (
-                                                            <span style={{
-                                                                fontSize: '0.75rem',
-                                                                color: 'var(--error)',
-                                                                fontWeight: 600
+                                                                background: 'var(--border)',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                fontSize: '1.5rem'
                                                             }}>
-                                                                SOLD OUT
-                                                            </span>
+                                                                ☕
+                                                            </div>
                                                         )}
-                                                    </div>
 
-                                                    {/* Actions */}
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: '0.25rem'
-                                                    }}>
-                                                        <button
-                                                            onClick={() => handleToggleAvailability(item)}
-                                                            className="btn-icon"
-                                                            style={{
-                                                                width: '32px',
-                                                                height: '32px',
-                                                                background: item.is_available
-                                                                    ? 'var(--success-bg)'
-                                                                    : 'var(--error-bg)',
-                                                                fontSize: '0.875rem'
-                                                            }}
-                                                            title={item.is_available ? "Mark as Sold Out" : "Mark as Available"}
-                                                        >
-                                                            {item.is_available ? '✅' : '❌'}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingItem(item);
-                                                                setSelectedCategoryId(category.id);
-                                                                setIsItemModalOpen(true);
-                                                            }}
-                                                            className="btn-icon"
-                                                            style={{ width: '32px', height: '32px', fontSize: '0.875rem' }}
-                                                        >
-                                                            ✏️
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteItem(item.id)}
-                                                            className="btn-icon"
-                                                            style={{
-                                                                width: '32px',
-                                                                height: '32px',
-                                                                background: 'var(--error-bg)',
-                                                                fontSize: '0.875rem'
-                                                            }}
-                                                        >
-                                                            🗑️
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                        {/* Info */}
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <h3 className="text-title" style={{
+                                                                color: 'var(--text-primary)',
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis'
+                                                            }}>
+                                                                {item.name}
+                                                            </h3>
+                                                            <p className="price" style={{ marginTop: '0.25rem' }}>
+                                                                ${item.price.toFixed(2)}
+                                                            </p>
+                                                            {!item.is_available && (
+                                                                <span style={{
+                                                                    fontSize: '0.75rem',
+                                                                    color: 'var(--error)',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    SOLD OUT
+                                                                </span>
+                                                            )}
+                                                        </div>
 
-                                    {/* Add Item Button */}
-                                    <button
-                                        onClick={() => {
-                                            setEditingItem(null);
-                                            setSelectedCategoryId(category.id);
-                                            setIsItemModalOpen(true);
-                                        }}
-                                        style={{
-                                            marginTop: '1rem',
-                                            width: '100%',
-                                            padding: '0.875rem',
-                                            background: 'transparent',
-                                            border: '2px dashed var(--border-light)',
-                                            borderRadius: 'var(--radius-lg)',
-                                            color: 'var(--text-muted)',
-                                            cursor: 'pointer',
-                                            fontWeight: 500,
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        + Add Item to {category.name}
-                                    </button>
+                                                        {/* Actions */}
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '0.25rem'
+                                                        }}>
+                                                            <button
+                                                                onClick={() => handleToggleAvailability(item)}
+                                                                className="btn-icon"
+                                                                style={{
+                                                                    width: '32px',
+                                                                    height: '32px',
+                                                                    background: item.is_available
+                                                                        ? 'var(--success-bg)'
+                                                                        : 'var(--error-bg)',
+                                                                    fontSize: '0.875rem'
+                                                                }}
+                                                                title={item.is_available ? "Mark as Sold Out" : "Mark as Available"}
+                                                            >
+                                                                {item.is_available ? '✅' : '❌'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingItem(item);
+                                                                    setSelectedCategoryId(category.id);
+                                                                    setIsItemModalOpen(true);
+                                                                }}
+                                                                className="btn-icon"
+                                                                style={{ width: '32px', height: '32px', fontSize: '0.875rem' }}
+                                                            >
+                                                                ✏️
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteItem(item.id)}
+                                                                className="btn-icon"
+                                                                style={{
+                                                                    width: '32px',
+                                                                    height: '32px',
+                                                                    background: 'var(--error-bg)',
+                                                                    fontSize: '0.875rem'
+                                                                }}
+                                                            >
+                                                                🗑️
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Add Item Button */}
+                                        <button
+                                            onClick={() => {
+                                                setEditingItem(null);
+                                                setSelectedCategoryId(category.id);
+                                                setIsItemModalOpen(true);
+                                            }}
+                                            style={{
+                                                marginTop: '1rem',
+                                                width: '100%',
+                                                padding: '0.875rem',
+                                                background: 'transparent',
+                                                border: '2px dashed var(--border-light)',
+                                                borderRadius: 'var(--radius-lg)',
+                                                color: 'var(--text-muted)',
+                                                cursor: 'pointer',
+                                                fontWeight: 500,
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            + Add Item to {category.name}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+                            ))}
+                        </div>
+                    )
+                }
+            </div >
 
             {/* Modals */}
-            <CategoryModal
+            < CategoryModal
                 isOpen={isCatModalOpen}
-                onClose={() => setIsCatModalOpen(false)}
+                onClose={() => setIsCatModalOpen(false)
+                }
                 category={editingCategory}
                 onSave={handleRefresh}
             />
@@ -349,6 +343,6 @@ export default function MenuManagement() {
                 categoryId={selectedCategoryId}
                 onSave={handleRefresh}
             />
-        </div>
+        </div >
     );
 }

@@ -3,6 +3,9 @@
 // For now, we'll use Web Audio API to generate a pleasant notification tone
 // Play notification sound 3 times
 export function playNotificationSound() {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+        return;
+    }
     try {
         const playOnce = (delay = 0) => {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -41,9 +44,12 @@ export function playNotificationSound() {
     }
 }
 // Ringing sound for waiter calls
-export function playRingSound() {
+export function playRingSound(existingContext = null) {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+        return;
+    }
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = existingContext || new (window.AudioContext || window.webkitAudioContext)();
 
         const ringOnce = (startTime) => {
             const frequencies = [660, 880]; // Classic dual-tone ring

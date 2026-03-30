@@ -60,7 +60,7 @@ export default function MenuPage() {
     }
 
     loadMenu(true);
-    const interval = setInterval(() => loadMenu(false), 5000);
+    const interval = setInterval(() => loadMenu(false), 15000);
 
     return () => {
       isMounted = false;

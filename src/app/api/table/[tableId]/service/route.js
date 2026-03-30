@@ -1,10 +1,34 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// 🛡️ A07: Simple Memory-based Rate Limiter for Service Requests
+const serviceAttempts = new Map();
+const SERVICE_WINDOW = 60 * 1000; // 1 min
+const MAX_SERVICE = 3;
+
 export async function POST(req, { params }) {
     try {
+        const ip = req.headers.get('x-forwarded-for') || 'unknown';
+        const now = Date.now();
+        
+        const record = serviceAttempts.get(ip);
+        if (record && (now - record.startTime > SERVICE_WINDOW)) {
+            serviceAttempts.delete(ip);
+        }
+
+        const currentCount = serviceAttempts.get(ip)?.count || 0;
+        if (currentCount >= MAX_SERVICE) {
+            return NextResponse.json({ 
+                error: 'Too many requests. Please wait a moment.' 
+            }, { status: 429 });
+        }
+
         const { tableId } = await params;
         const { type, message } = await req.json();
+
+        // Log attempt
+        serviceAttempts.set(ip, { count: currentCount + 1, startTime: record?.startTime || now });
+
 
         // Find table by ID or Label
         let table = await prisma.table.findUnique({ where: { id: tableId } });

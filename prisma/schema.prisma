@@ -90,7 +90,8 @@ model Order {
   total_price Float       @default(0.0)
   created_at  DateTime    @default(now())
   updated_at  DateTime    @updatedAt
-  items       OrderItem[]
+  items              OrderItem[]
+  pushSubscriptions  PushSubscription[]
 }
 
 model OrderItem {
@@ -102,4 +103,26 @@ model OrderItem {
   quantity  Int
   price     Float    // Snapshot of price at order time
   notes     String?
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  order_id   String
+  order      Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  endpoint   String
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+
+  @@unique([endpoint, order_id], name: "endpoint_order_id")
+}
+
+model Staff {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  password   String   // Hashed securely (e.g. bcrypt)
+  role       String   @default("ADMIN") // Could be ADMIN or KITCHEN
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }

@@ -1,10 +1,34 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// 🛡️ A07: Simple Memory-based Rate Limiter for Chat
+const chatAttempts = new Map();
+const CHAT_WINDOW = 60 * 1000; // 1 min
+const MAX_CHAT = 10;
+
 export async function POST(req, { params }) {
     try {
+        const ip = req.headers.get('x-forwarded-for') || 'unknown';
+        const now = Date.now();
+        
+        const record = chatAttempts.get(ip);
+        if (record && (now - record.startTime > CHAT_WINDOW)) {
+            chatAttempts.delete(ip);
+        }
+
+        const currentCount = chatAttempts.get(ip)?.count || 0;
+        if (currentCount >= MAX_CHAT) {
+            return NextResponse.json({ 
+                error: 'Too many messages. Please wait a moment.' 
+            }, { status: 429 });
+        }
+
         const { tableId } = await params;
         const { text, sender } = await req.json();
+
+        // Log attempt
+        chatAttempts.set(ip, { count: currentCount + 1, startTime: record?.startTime || now });
+
 
         // Find table by ID or Label
         let table = await prisma.table.findUnique({ where: { id: tableId } });

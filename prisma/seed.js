@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 const mockRestaurant = {
@@ -108,7 +109,23 @@ async function main() {
             });
         }
     }
-    console.log('Seeding finished.');
+    console.log('Finished seeding Menu.');
+
+    // 4. Create Default Admin User
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    const adminUser = await prisma.staff.upsert({
+        where: { username: 'admin' },
+        update: {},
+        create: {
+            username: 'admin',
+            password: hashedPassword,
+            name: 'Administrator',
+            role: 'ADMIN'
+        }
+    });
+    console.log(`Created admin user: ${adminUser.username}`);
+
+    console.log('Seeding completely finished.');
 }
 
 main()

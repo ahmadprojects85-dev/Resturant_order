@@ -1,14 +1,14 @@
 
-import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { cookies } from 'next/headers';
-
-// Helper to check auth
-async function checkAuth() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('admin_token');
-    return token?.value === 'authenticated';
-}
+import { verifyToken } from '@/lib/auth';
+ 
+ // Helper to check auth
+ async function checkAuth() {
+     const cookieStore = await cookies();
+     const token = cookieStore.get('auth_token');
+     if (!token) return false;
+     const payload = await verifyToken(token.value);
+     return !!payload;
+ }
 
 export async function POST(request) {
     if (!await checkAuth()) {
