@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { sendPushNotification } from '@/lib/webpush';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(request, { params }) {
     try {
         const { orderId } = await params;

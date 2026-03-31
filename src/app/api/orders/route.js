@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // 🛡️ A07: Simple Memory-based Rate Limiter for Orders
 const orderAttempts = new Map();
 const ORDER_WINDOW = 10 * 60 * 1000; // 10 mins

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
     try {
         // For MVP, we'll just fetch the first restaurant regardless of slug

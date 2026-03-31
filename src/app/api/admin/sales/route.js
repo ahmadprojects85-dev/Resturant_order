@@ -3,6 +3,8 @@ import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to check auth
 async function checkAuth() {
     const cookieStore = await cookies();

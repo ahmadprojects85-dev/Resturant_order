@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // GET: Return the current active session + its orders for this table
 export async function GET(request, { params }) {
     try {

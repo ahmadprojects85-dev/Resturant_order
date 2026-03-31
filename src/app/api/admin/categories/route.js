@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
  
  // Helper to check auth
  async function checkAuth() {
