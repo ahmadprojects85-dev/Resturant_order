@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/push/subscribe
 // Called from the customer's browser after they allow notifications.
 // Saves their push subscription linked to their orderId.

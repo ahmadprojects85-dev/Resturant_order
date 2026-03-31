@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // 🛡️ A07: Simple Memory-based Rate Limiter for Service Requests
 const serviceAttempts = new Map();
 const SERVICE_WINDOW = 60 * 1000; // 1 min
