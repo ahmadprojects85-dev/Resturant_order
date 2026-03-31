@@ -66,6 +66,39 @@ export default function LoginPage() {
                 >
                     {loading ? 'Entering Dashboard...' : 'Enter Dashboard'}
                 </button>
+                
+                <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{
+                      fontSize: '0.875rem',
+                      color: '#a0a0a0',
+                      margin: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      ✨ Developed by 
+                      <a 
+                        href="https://www.instagram.com/ahmad.a.qaradaghi?igsh=MXB6NGl5Ymp5bjBlYw==" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{
+                          color: '#c4602a',
+                          fontWeight: '800',
+                          textDecoration: 'none',
+                          padding: '4px 10px',
+                          background: 'rgba(196, 96, 42, 0.15)',
+                          borderRadius: '20px',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                       Ahmad Amjad
+                      </a>
+                    </p>
+                </div>
             </div>
         </div>
     );

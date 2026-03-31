@@ -174,6 +174,45 @@ export default function MenuPage() {
         ))}
       </main>
 
+      {/* Developer Credit Footer */}
+      <footer style={{
+        textAlign: 'center',
+        padding: '3rem 1rem',
+        marginTop: '2rem',
+        borderTop: '1px solid var(--border)'
+      }}>
+        <p style={{
+          fontSize: '0.875rem',
+          color: 'var(--text-secondary)',
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem'
+        }}>
+          ✨ Developed by 
+          <a 
+            href="https://www.instagram.com/ahmad.a.qaradaghi?igsh=MXB6NGl5Ymp5bjBlYw==" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              color: 'var(--brown)',
+              fontWeight: '800',
+              textDecoration: 'none',
+              padding: '4px 10px',
+              background: 'rgba(196, 96, 42, 0.1)',
+              borderRadius: '20px',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+           Ahmad Amjad
+          </a>
+        </p>
+      </footer>
+
       {/* Floating Cart Bar */}
       {cartCount > 0 && (
         <div className={`cart-bar ${shouldAnimate ? 'animate-lightning' : 'animate-slide-in-up'}`} style={{ transition: 'all 0.3s ease' }}>

@@ -62,6 +62,50 @@ export default function ItemModal({ isOpen, onClose, item, categoryId, onSave })
         }
     };
 
+    const [uploadingImage, setUploadingImage] = useState(false);
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingImage(true);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 600;
+                const MAX_HEIGHT = 600;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                setFormData(prev => ({ ...prev, image: dataUrl }));
+                setUploadingImage(false);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
     const inputStyle = {
         width: '100%',
         padding: '0.875rem',
@@ -154,29 +198,76 @@ export default function ItemModal({ isOpen, onClose, item, categoryId, onSave })
                         />
                     </div>
 
-                    {/* Image URL */}
+                    {/* Image Upload / URL */}
                     <div>
-                        <label style={labelStyle}>Image URL (optional)</label>
-                        <input
-                            type="text"
-                            value={formData.image}
-                            onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                            placeholder="https://example.com/image.jpg"
-                            style={inputStyle}
-                        />
+                        <label style={labelStyle}>Item Image</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <input
+                                type="text"
+                                value={formData.image}
+                                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                                placeholder="Pase URL or click Upload ->"
+                                style={{ ...inputStyle, flex: 1 }}
+                            />
+                            <label style={{
+                                background: 'var(--primary)',
+                                color: 'white',
+                                padding: '0.875rem 1rem',
+                                borderRadius: 'var(--radius-lg)',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                opacity: uploadingImage ? 0.7 : 1,
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <span>{uploadingImage ? '⏳' : '📸'}</span>
+                                {uploadingImage ? 'Uploading...' : 'Upload'}
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={handleImageUpload}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
+                        </div>
                         {formData.image && (
-                            <div style={{ marginTop: '0.75rem' }}>
+                            <div style={{ marginTop: '0.75rem', position: 'relative' }}>
                                 <img
                                     src={formData.image}
                                     alt="Preview"
                                     style={{
                                         width: '100%',
-                                        height: '120px',
+                                        height: '140px',
                                         objectFit: 'cover',
-                                        borderRadius: 'var(--radius-md)'
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--border)'
                                     }}
                                     onError={(e) => e.target.style.display = 'none'}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, image: '' })}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '8px',
+                                        right: '8px',
+                                        background: 'rgba(0,0,0,0.6)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '32px',
+                                        height: '32px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ✕
+                                </button>
                             </div>
                         )}
                     </div>
